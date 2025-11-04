@@ -12,9 +12,16 @@ A lightweight Windows application for controlling Spotify with global hotkeys. F
   - `Ctrl+Alt+Space` - Play/Pause
   - `Ctrl+Alt+L` - Like Current Track
   - `Ctrl+Alt+A` - Add Current Track to Playlist
+  - `Ctrl+Alt+↑` - Volume Up
+  - `Ctrl+Alt+↓` - Volume Down
+  - `Ctrl+Alt+S` - Toggle Shuffle
+  - `Ctrl+Alt+R` - Cycle Repeat (Off → All → One)
 
 - **Sleek UI**: Black glass design with Spotify green accents
+- **System Tray**: Minimize to system tray, stays running in background
 - **Real-time Display**: See what's currently playing
+- **Volume Control**: Adjust Spotify volume with hotkeys
+- **Playback Modes**: Quick shuffle and repeat toggle
 - **Playlist Integration**: Quickly add tracks to your chosen playlist
 - **Single Executable**: No installation required, just run the .exe
 
@@ -101,8 +108,12 @@ You can also just paste the playlist ID (e.g., `37i9dQZF1DXcBWIGoYBM5M`)
 | `Ctrl+Alt+Space` | Play/Pause |
 | `Ctrl+Alt+L` | Like Track ♥ |
 | `Ctrl+Alt+A` | Add to Playlist |
+| `Ctrl+Alt+↑` | Volume Up (+10%) |
+| `Ctrl+Alt+↓` | Volume Down (-10%) |
+| `Ctrl+Alt+S` | Toggle Shuffle |
+| `Ctrl+Alt+R` | Cycle Repeat Mode |
 
-> **Note**: Hotkeys work globally, even when the app is minimized!
+> **Note**: Hotkeys work globally, even when the app is minimized or in system tray!
 
 ## 🎨 UI Preview
 
@@ -110,6 +121,7 @@ You can also just paste the playlist ID (e.g., `37i9dQZF1DXcBWIGoYBM5M`)
 - **Spotify Green Accents**: Authentic Spotify colors (#1DB954)
 - **Real-time Updates**: Current track and artist display
 - **Clean Layout**: All controls in one compact window
+- **System Tray Integration**: Close to minimize to tray, hotkeys still work
 
 ## ⚙️ Requirements
 
@@ -149,11 +161,12 @@ The app stores configuration in your home directory:
 
 ## 📦 Technical Details
 
-- **Language**: Python 3
+- **Language**: Python 3.8+
 - **GUI**: Tkinter
 - **Spotify API**: spotipy
 - **Hotkeys**: keyboard library
-- **Packaging**: PyInstaller
+- **System Tray**: pystray + Pillow
+- **Packaging**: PyInstaller (single file exe)
 
 ## 🤝 Contributing
 

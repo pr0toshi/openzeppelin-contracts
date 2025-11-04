@@ -6,7 +6,14 @@ import keyboard
 import threading
 import json
 import os
+import sys
 from pathlib import Path
+try:
+    from pystray import Icon, Menu, MenuItem
+    from PIL import Image, ImageDraw
+    HAS_SYSTRAY = True
+except ImportError:
+    HAS_SYSTRAY = False
 
 # Spotify Colors
 SPOTIFY_GREEN = "#1DB954"
@@ -18,9 +25,14 @@ class SpotifyHotkeyApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Spotify Hotkey Controller")
-        self.root.geometry("400x600")
+        self.root.geometry("450x700")
         self.root.configure(bg=SPOTIFY_BLACK)
         self.root.resizable(False, False)
+
+        # System tray support
+        self.tray_icon = None
+        if HAS_SYSTRAY:
+            self.root.protocol('WM_DELETE_WINDOW', self.hide_window)
 
         # Config file path
         self.config_path = Path.home() / ".spotify_hotkey_config.json"
@@ -202,6 +214,10 @@ class SpotifyHotkeyApp:
             ("Ctrl+Alt+Space", "Play/Pause"),
             ("Ctrl+Alt+L", "Like Track"),
             ("Ctrl+Alt+A", "Add to Playlist"),
+            ("Ctrl+Alt+Up", "Volume Up"),
+            ("Ctrl+Alt+Down", "Volume Down"),
+            ("Ctrl+Alt+S", "Toggle Shuffle"),
+            ("Ctrl+Alt+R", "Toggle Repeat"),
         ]
 
         for hotkey, description in hotkeys:
@@ -303,6 +319,10 @@ class SpotifyHotkeyApp:
             keyboard.add_hotkey('ctrl+alt+space', self.play_pause)
             keyboard.add_hotkey('ctrl+alt+l', self.like_track)
             keyboard.add_hotkey('ctrl+alt+a', self.add_to_playlist)
+            keyboard.add_hotkey('ctrl+alt+up', self.volume_up)
+            keyboard.add_hotkey('ctrl+alt+down', self.volume_down)
+            keyboard.add_hotkey('ctrl+alt+s', self.toggle_shuffle)
+            keyboard.add_hotkey('ctrl+alt+r', self.toggle_repeat)
         except Exception as e:
             print(f"Hotkey setup error: {e}")
 
@@ -358,6 +378,68 @@ class SpotifyHotkeyApp:
         elif not self.target_playlist_id:
             self.show_notification("No playlist set!")
 
+    def volume_up(self):
+        """Increase volume by 10%"""
+        if self.sp:
+            try:
+                playback = self.sp.current_playback()
+                if playback and playback['device']:
+                    current_volume = playback['device']['volume_percent']
+                    new_volume = min(100, current_volume + 10)
+                    self.sp.volume(new_volume)
+                    self.show_notification(f"Volume: {new_volume}%")
+            except Exception as e:
+                print(f"Volume up error: {e}")
+
+    def volume_down(self):
+        """Decrease volume by 10%"""
+        if self.sp:
+            try:
+                playback = self.sp.current_playback()
+                if playback and playback['device']:
+                    current_volume = playback['device']['volume_percent']
+                    new_volume = max(0, current_volume - 10)
+                    self.sp.volume(new_volume)
+                    self.show_notification(f"Volume: {new_volume}%")
+            except Exception as e:
+                print(f"Volume down error: {e}")
+
+    def toggle_shuffle(self):
+        """Toggle shuffle mode"""
+        if self.sp:
+            try:
+                playback = self.sp.current_playback()
+                if playback:
+                    current_shuffle = playback['shuffle_state']
+                    new_shuffle = not current_shuffle
+                    self.sp.shuffle(new_shuffle)
+                    status = "ON" if new_shuffle else "OFF"
+                    self.show_notification(f"Shuffle: {status}")
+            except Exception as e:
+                print(f"Toggle shuffle error: {e}")
+
+    def toggle_repeat(self):
+        """Toggle repeat mode (off -> context -> track -> off)"""
+        if self.sp:
+            try:
+                playback = self.sp.current_playback()
+                if playback:
+                    current_repeat = playback['repeat_state']
+                    # Cycle: off -> context -> track -> off
+                    if current_repeat == 'off':
+                        new_repeat = 'context'
+                        status = "All"
+                    elif current_repeat == 'context':
+                        new_repeat = 'track'
+                        status = "One"
+                    else:
+                        new_repeat = 'off'
+                        status = "OFF"
+                    self.sp.repeat(new_repeat)
+                    self.show_notification(f"Repeat: {status}")
+            except Exception as e:
+                print(f"Toggle repeat error: {e}")
+
     def show_notification(self, message):
         """Show a temporary notification"""
         notif = tk.Toplevel(self.root)
@@ -410,8 +492,52 @@ class SpotifyHotkeyApp:
         thread = threading.Thread(target=update_loop, daemon=True)
         thread.start()
 
+    def create_tray_icon(self):
+        """Create system tray icon"""
+        if not HAS_SYSTRAY:
+            return
+
+        # Create simple icon
+        def create_icon_image():
+            width = 64
+            height = 64
+            image = Image.new('RGB', (width, height), SPOTIFY_BLACK)
+            dc = ImageDraw.Draw(image)
+
+            # Draw a simple green circle (music note style)
+            dc.ellipse([16, 16, 48, 48], fill=SPOTIFY_GREEN)
+            dc.ellipse([20, 20, 44, 44], fill=SPOTIFY_BLACK)
+
+            return image
+
+        def on_quit(icon, item):
+            icon.stop()
+            self.root.quit()
+
+        def on_show(icon, item):
+            icon.stop()
+            self.root.after(0, self.root.deiconify)
+
+        menu = Menu(
+            MenuItem('Show', on_show, default=True),
+            MenuItem('Quit', on_quit)
+        )
+
+        self.tray_icon = Icon("Spotify Hotkey", create_icon_image(), "Spotify Hotkey", menu)
+
+    def hide_window(self):
+        """Hide window to system tray"""
+        if HAS_SYSTRAY:
+            self.root.withdraw()
+            if self.tray_icon:
+                threading.Thread(target=self.tray_icon.run, daemon=True).start()
+        else:
+            self.root.quit()
+
     def run(self):
         """Run the application"""
+        if HAS_SYSTRAY:
+            self.create_tray_icon()
         self.root.mainloop()
 
 if __name__ == "__main__":
